@@ -8,11 +8,12 @@ using VoiceWalker;
 
 namespace EchoMatesMod
 {
-    [BepInPlugin("com.modder.echomates.sandbox", "Echo Mates Sandbox & Unlocker", "1.2.0")]
+    [BepInPlugin("com.modder.echomates.sandbox", "Echo Mates Sandbox & Unlocker", "1.3.0")]
     public class Plugin : BaseUnityPlugin
     {
         public static ConfigEntry<bool> CfgUnlockDemo;
         public static ConfigEntry<int> CfgMaxDepth;
+        public static ConfigEntry<int> CfgMaxPlayers;
         public static ConfigEntry<bool> CfgBlockTelemetry;
         public static ConfigEntry<bool> CfgEnableDevMenu;
         public static ConfigEntry<bool> CfgEnableExorcistNeck;
@@ -29,6 +30,9 @@ namespace EchoMatesMod
 
             CfgMaxDepth = Config.Bind("Features", "MaxCampaignDepth", 99, 
                 "Максимальная глубина кампании (в оригинальной игре 10; ставим 99 для бесконечного спуска без остановки).");
+
+            CfgMaxPlayers = Config.Bind("Network", "MaxPlayers", 8, 
+                "Количество слотов для игроков в лобби хоста (по умолчанию в игре 4; рекомендуется 6-8, максимум 16).");
             
             CfgBlockTelemetry = Config.Bind("Features", "BlockTelemetry", true, 
                 "Полностью заглушить телеметрию, отсылаемую разработчикам игры.");
@@ -45,9 +49,10 @@ namespace EchoMatesMod
             var harmony = new Harmony("com.modder.echomates.sandbox");
             harmony.PatchAll();
 
-            Logger.LogInfo("=== [Echo Mates Mod] Loaded successfully with Config ===");
+            Logger.LogInfo("=== [Echo Mates Mod - Host Edition] Loaded successfully with Config ===");
             Logger.LogInfo($"UnlockDemoLimits: {CfgUnlockDemo.Value}");
             Logger.LogInfo($"MaxCampaignDepth: {CfgMaxDepth.Value}");
+            Logger.LogInfo($"MaxPlayers: {CfgMaxPlayers.Value}");
             Logger.LogInfo($"BlockTelemetry: {CfgBlockTelemetry.Value}");
             Logger.LogInfo($"EnableDevMenu: {CfgEnableDevMenu.Value}");
             Logger.LogInfo($"EnableExorcistNeck: {CfgEnableExorcistNeck.Value}");
@@ -273,6 +278,25 @@ namespace EchoMatesMod
             if (!Plugin.CfgUnlockDemo.Value) return true;
             __result = Plugin.CfgMaxDepth.Value;
             return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(VoiceWalkerConfig), "Get")]
+    public static class PatchVoiceWalkerConfigGet
+    {
+        static void Postfix(VoiceWalkerConfig __result)
+        {
+            if (__result != null)
+            {
+                if (Plugin.CfgMaxPlayers != null)
+                {
+                    __result.steamLobbyMaxMembers = Mathf.Clamp(Plugin.CfgMaxPlayers.Value, 2, 16);
+                }
+                if (Plugin.CfgMaxDepth != null)
+                {
+                    __result.maxDepth = Plugin.CfgMaxDepth.Value;
+                }
+            }
         }
     }
 
